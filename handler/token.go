@@ -129,7 +129,7 @@ func (t *TokenAuth) CreateToken(ar *AuthRequest) (string, error) {
 	}
 	if len(ar.Actions) > 0 {
 		claims.Access = []*token.ResourceActions{
-			&token.ResourceActions{Type: ar.Type, Name: ar.Name, Actions: ar.Actions},
+			{Type: ar.Type, Name: ar.Name, Actions: ar.Actions},
 		}
 	}
 	claimsJSON, err := json.Marshal(claims)

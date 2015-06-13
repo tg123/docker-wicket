@@ -31,9 +31,9 @@ type permission struct {
 var runningContext *RunningContext
 
 var accessMap = map[string]permission{
-	"GET":    permission{acl.READ, "read"},
-	"PUT":    permission{acl.WRITE, "write"},
-	"DELETE": permission{acl.DELETE, "delete"},
+	"GET":    {acl.READ, "read"},
+	"PUT":    {acl.WRITE, "write"},
+	"DELETE": {acl.DELETE, "delete"},
 }
 
 type context struct {
