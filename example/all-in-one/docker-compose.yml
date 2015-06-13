@@ -1,0 +1,45 @@
+nginx:
+  image: "nginx"
+  ports:
+    - "5000:5000"
+  volumes:
+    - nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  links:
+    - wicket:wicket
+    - registryv1:registryv1
+    - registryv2:registryv2
+wicket:
+  build: "../../"
+  command: "run"
+  expose:
+    - "9999"
+  environment: 
+    - WICKET_CERT=/wicket.crt
+    - WICKET_KEY=/wicket.key
+    - WICKET_ACL_DRIVER=derelict
+    - WICKET_V1_ENDPOINT=127.0.0.1:5000
+    - WICKET_V1_INDEX_DRIVER=mem
+  volumes:
+    - ../wicket.crt:/wicket.crt:ro
+    - ../wicket.key:/wicket.key:ro
+registryv1:
+  image: registry:0.9.1
+  expose:
+    - "5000"
+  environment: 
+    - STANDALONE=false
+    - INDEX_ENDPOINT=http://wicket:9999
+  links:
+    - wicket:wicket
+registryv2:
+  image: registry:2
+  environment: 
+    - REGISTRY_AUTH=token
+    - REGISTRY_AUTH_TOKEN_REALM=http://127.0.0.1:5000/v2/token
+    - REGISTRY_AUTH_TOKEN_ISSUER=docker-wicket
+    - REGISTRY_AUTH_TOKEN_SERVICE=registry
+    - REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE=/root/certs/bundle
+  volumes:
+    - ../wicket.crt:/root/certs/bundle:ro
+  expose:
+    - "5000"
