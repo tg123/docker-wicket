@@ -80,7 +80,11 @@ PRs are welcomed.
 
   * derelict
   
-    This driver does nothing but allow any user to access. just for testing purpose.
+    This driver does nothing but ALLOW any user to access. just for testing purpose.
+  
+  * interdict
+  
+    This driver does nothing but DENY any user to access. just for testing purpose.
   
 
 # Index Drivers (v1 only)
