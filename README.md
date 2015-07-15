@@ -85,7 +85,17 @@ PRs are welcomed.
   * interdict
   
     This driver does nothing but DENY any user to access. just for testing purpose.
+
+  * htpasswd
   
+    This driver read an [htpasswd](https://en.wikipedia.org/wiki/.htpasswd) file for user authentication. user can only access their own namespaces. For example, user1 can pull from and push to `/user1/*`, but others cannot.
+    
+    * Specify htpasswd file path
+    `--acl_htpasswd_file=/path/to/htpasswd` or `WICKET_ACL_HTPASSWD_FILE=/path/to/htpasswd`
+    
+    * Auto reload
+    Driver will automaticity reload changed `htpasswd` file. No restart is required.
+    
 
 # Index Drivers (v1 only)
 
