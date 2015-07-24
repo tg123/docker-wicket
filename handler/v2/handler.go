@@ -35,8 +35,8 @@ var runningContext *RunningContext
 
 // TODO check docker sourse code
 var accessMap = map[string]acl.Permission{
-	"push": acl.READ,
-	"pull": acl.WRITE,
+	"pull": acl.READ,
+	"push": acl.WRITE,
 }
 
 func (c *context) commonHeader(rw web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
