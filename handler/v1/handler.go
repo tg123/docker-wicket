@@ -78,44 +78,6 @@ func (c *context) ping(rw web.ResponseWriter, req *web.Request) {
 //
 
 func (c *context) authAccess(rw web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
-	username, password, ok := req.BasicAuth()
-
-	if ok {
-
-		a, ok := accessMap[req.Method]
-
-		if !ok {
-			http.Error(rw, "", http.StatusMethodNotAllowed)
-			return
-		}
-
-		ok, err := runningContext.Acl.CanLogin(acl.Username(username), acl.Password(password))
-
-		if err != nil {
-			http.Error(rw, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if !ok {
-			http.Error(rw, "", http.StatusForbidden)
-			return
-		}
-
-		ok, err = runningContext.Acl.CanAccess(acl.Username(username), c.namespace, c.repo, a.Permission)
-
-		if err != nil {
-			http.Error(rw, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if !ok {
-			http.Error(rw, "", http.StatusForbidden)
-			return
-		}
-
-		next(rw, req)
-		return
-	}
 
 	// Authorization: Token signature=123,repository="library/test",access=write
 	a, ok := req.Header["Authorization"]
@@ -147,7 +109,70 @@ func (c *context) authAccess(rw web.ResponseWriter, req *web.Request, next web.N
 
 	}
 
-	http.Error(rw, "", http.StatusUnauthorized)
+	// Authorization: Basic
+	username, password, ok := req.BasicAuth()
+
+	var _username acl.Username
+
+	if ok {
+		_username = acl.Username(username)
+	} else {
+		_username = acl.Anonymous
+	}
+
+	// TODO should move to a separate func
+	// happens when login
+	if c.namespace == "" || c.repo == "" {
+
+		// Anonymous cant login
+		if _username == acl.Anonymous {
+			http.Error(rw, "", http.StatusUnauthorized)
+		}
+
+		return
+	}
+
+	ok, err := runningContext.Acl.CanLogin(_username, acl.Password(password))
+
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !ok {
+
+		if _username == acl.Anonymous {
+			http.Error(rw, "", http.StatusUnauthorized)
+		} else {
+			http.Error(rw, "", http.StatusForbidden)
+		}
+
+		return
+	}
+
+	// TODO remove this scope
+	{
+		a, ok := accessMap[req.Method]
+
+		if !ok {
+			http.Error(rw, "", http.StatusMethodNotAllowed)
+			return
+		}
+
+		ok, err = runningContext.Acl.CanAccess(_username, c.namespace, c.repo, a.Permission)
+
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if !ok {
+			http.Error(rw, "", http.StatusForbidden)
+			return
+		}
+	}
+
+	next(rw, req)
 }
 
 func (c *context) readNamespace(rw web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {

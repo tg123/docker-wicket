@@ -11,6 +11,10 @@ const (
 	DELETE
 )
 
+const (
+	Anonymous Username = Username("")
+)
+
 type Driver interface {
 	CanLogin(username Username, password Password) (bool, error)
 

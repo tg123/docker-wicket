@@ -26,7 +26,7 @@ type context struct {
 	namespace string
 	repo      string
 
-	permsWant []acl.Permission
+	permsWant []string
 
 	authReq handler.AuthRequest
 }
@@ -75,9 +75,7 @@ func (c *context) parseRequest(rw web.ResponseWriter, req *web.Request, next web
 			c.repo = parts[1]
 		}
 
-		c.authReq.Actions = strings.Split(parts[2], ",")
-		sort.Strings(c.authReq.Actions)
-
+		c.permsWant = strings.Split(parts[2], ",")
 	}
 
 	next(rw, req)
@@ -86,48 +84,57 @@ func (c *context) parseRequest(rw web.ResponseWriter, req *web.Request, next web
 func (c *context) authAccess(rw web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
 	username, password, ok := req.BasicAuth()
 
+	if c.authReq.Account != "" && c.authReq.Account != username {
+		http.Error(rw, "account is not same as login user", http.StatusForbidden)
+		return
+	}
+
+	var _username acl.Username
+
 	if ok {
+		_username = acl.Username(username)
+	} else {
+		_username = acl.Anonymous
+	}
 
-		if c.authReq.Account != "" && c.authReq.Account != username {
-			http.Error(rw, "account is not same as login user", http.StatusForbidden)
-			return
-		}
+	ok, err := runningContext.Acl.CanLogin(_username, acl.Password(password))
 
-		ok, err := runningContext.Acl.CanLogin(acl.Username(username), acl.Password(password))
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-		if !ok {
+	if !ok {
+
+		if _username == acl.Anonymous {
+			http.Error(rw, "", http.StatusUnauthorized)
+		} else {
 			http.Error(rw, "", http.StatusForbidden)
-			return
 		}
+
+		return
+	}
+
+	// check actions
+	for _, v := range c.permsWant {
+
+		p := accessMap[v]
+
+		ok, err := runningContext.Acl.CanAccess(_username, c.namespace, c.repo, p)
 
 		if err != nil {
 			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// check actions
-		for _, v := range c.authReq.Actions {
-
-			p := accessMap[v]
-
-			ok, err := runningContext.Acl.CanAccess(acl.Username(username), c.namespace, c.repo, p)
-
-			if err != nil {
-				http.Error(rw, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			if !ok {
-				http.Error(rw, "", http.StatusForbidden)
-				return
-			}
+		if ok {
+			c.authReq.Actions = append(c.authReq.Actions, v)
 		}
-
-		next(rw, req)
-		return
 	}
 
-	http.Error(rw, "", http.StatusUnauthorized)
+	sort.Strings(c.authReq.Actions)
+
+	next(rw, req)
 }
 
 func (c *context) writeToken(rw web.ResponseWriter, req *web.Request) {
